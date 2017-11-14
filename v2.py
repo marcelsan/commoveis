@@ -6,7 +6,7 @@ from math import acos, sin, cos, radians
 
 # PREPROCESSING
 
-def readDataset(file_name = 'dataset', extension = 'csv'):
+def readDataset(file_name, extension = 'csv'):
 	dataset = None
 
 	switcher = {
@@ -15,7 +15,7 @@ def readDataset(file_name = 'dataset', extension = 'csv'):
 
 	dataset = switcher.get(extension.lower(), pd.read_csv(file_name + '.csv'))
 
-	return dataset
+	return shuffle(dataset)
 # end
 
 def splitAttributes(data, output_idx):
@@ -28,7 +28,7 @@ def splitAttributes(data, output_idx):
 # end
 
 def splitDataset(data, train, test, validation = 0):
-	thresh = np.array([train, validation]) * data.shape[0]/(train + test + validation)
+	thresh = np.array([train, train+test]) * data.shape[0]/(train + test + validation)
 
 	train_data = data.iloc[:thresh[0], :].values
 	test_data = data.iloc[thresh[0]:thresh[1], :].values
@@ -39,4 +39,4 @@ def splitDataset(data, train, test, validation = 0):
 
 # EVALL PERFORMANCE
 
-
+def 
