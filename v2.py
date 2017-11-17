@@ -38,5 +38,3 @@ def splitDataset(data, train, test, validation = 0):
 # end
 
 # EVALL PERFORMANCE
-
-def 
