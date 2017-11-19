@@ -47,6 +47,10 @@ def geodesicDistance(A, b):
 	# distância com raio terrestre equatorial:
 	geo_dist = lambda x, y: acos(sin(radians(x[0]))*sin(radians(y[0]))+cos(radians(x[0]))*cos(radians(y[0]))*cos(radians(x[1]-y[1]))) * 6378.1
 
+	if (len(A.shape) == 1):
+		A = [A]
+	# end
+
 	distances = np.array(list(map(lambda x: geo_dist(x, b), A)))
 
 	return distances
@@ -60,19 +64,19 @@ def modelPathLoss(model, distances):
 	return path_loss(distances)
 # end
 
-# MAIN FUNCTIONS
+# TEST FUNCTIONS
 
-def main():
+def testModels():
 
 	models = []
-	models.append(FreeSpace())
-	models.append(OkumuraHata())
-	models.append(Cost231Hata())
-	models.append(Cost231())
-	# models.append(ECC33())
-	models.append(Ericsson())
-	models.append(Lee())
-	models.append(Sui())
+	models.append(FreeSpace(1800))
+	# models.append(OkumuraHata(1800))
+	models.append(Cost231Hata(1800))
+	models.append(Cost231(1800))
+	models.append(ECC33(1800))
+	models.append(Ericsson(1800))
+	models.append(Lee(1800))
+	# models.append(Sui(1800))
 
 	medicoes = readDataset('medicoes')
 	# print("READ medicoes.csv")
@@ -97,5 +101,54 @@ def main():
 
 # end
 
-main()
+def coordPoints(size_km = 5e-3):
+	lat_lim = [-8.08, -8.065]
+	lon_lim = [-34.91, -34.887]
 
+	init_step = 8e4 * size_km
+
+	corner = np.array([lat_lim[0], lon_lim[0]])
+	dx = np.array([1e-7, 0])
+	dy = np.array([0, 1e-7])
+	
+	coord_x = corner + init_step*dx
+
+	while geodesicDistance(coord_x, corner) < size_km:
+		coord_x += dx
+	# end
+
+	d_lat = coord_x[0] + 8.08
+
+	# print("Distância (km) em latitude: " + str(geodesicDistance(coord_x, corner)[0]))
+	# print("Passo em latidude: " + str(d_lat))
+
+	coord_y = coord_x + init_step*dy
+
+	while geodesicDistance(coord_y, coord_x) < size_km:
+		coord_y += dy
+	# end
+
+	d_lon = coord_y[1] + 34.91
+
+	# print("Distância (km) em longitude: " + str(geodesicDistance(coord_y, coord_x)[0]))
+	# print("Passo em longitude: " + str(d_lon))
+
+	x = np.linspace(lat_lim[0], lat_lim[1], (lat_lim[1]-lat_lim[0])/d_lat)
+	y = np.linspace(lon_lim[0], lon_lim[1], (lon_lim[1]-lon_lim[0])/d_lon)
+
+	return x, y
+# end
+
+
+# testModels()
+
+x, y = coordPoints(20e-3)	# 20 metros
+
+# printa as distancias entre pontos para validar o tamanho
+print("LATITUDE - LONGITUDE")
+for i in range(x.size-1):
+	a = np.array([x[i], y[0]])
+	b = np.array([x[i+1], y[0]])
+	c = np.array([x[0], y[i]])
+	d = np.array([x[0], y[i+1]])
+	print(geodesicDistance(a, b), geodesicDistance(c, d))
