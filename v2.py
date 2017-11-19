@@ -64,42 +64,7 @@ def modelPathLoss(model, distances):
 	return path_loss(distances)
 # end
 
-# TEST FUNCTIONS
-
-def testModels():
-
-	models = []
-	models.append(FreeSpace(1800))
-	# models.append(OkumuraHata(1800))
-	models.append(Cost231Hata(1800))
-	models.append(Cost231(1800))
-	models.append(ECC33(1800))
-	models.append(Ericsson(1800))
-	models.append(Lee(1800))
-	# models.append(Sui(1800))
-
-	medicoes = readDataset('medicoes')
-	# print("READ medicoes.csv")
-	erbs = readDataset('erbs')
-	# print("READ erbs.csv")
-	erbs, _ = splitAttributes(erbs, [0, 1, 4, 5])
-
-	med_coord, rssi = splitAttributes(medicoes, [x for x in range(2, 8)])
-	erb_coord, eirp = splitAttributes(pd.DataFrame(erbs), [2])
-
-	distances = np.array(list(map(lambda x: geodesicDistance(erb_coord, x), med_coord)))
-	path_loss = np.transpose(eirp) - rssi
-
-	# print(distances)
-	# print(path_loss)
-
-	for model in models:
-		model_err = modelPathLoss(model, distances) - path_loss
-		mean_sqr = np.sqrt(np.mean(model_err ** 2))
-		print(type(model).__name__ + ": " + str(mean_sqr))
-	# end
-
-# end
+# FINGERPRINT FUNCTIONS
 
 def coordPoints(size_km = 5e-3):
 	lat_lim = [-8.08, -8.065]
@@ -133,22 +98,106 @@ def coordPoints(size_km = 5e-3):
 	# print("Distância (km) em longitude: " + str(geodesicDistance(coord_y, coord_x)[0]))
 	# print("Passo em longitude: " + str(d_lon))
 
-	x = np.linspace(lat_lim[0], lat_lim[1], (lat_lim[1]-lat_lim[0])/d_lat)
-	y = np.linspace(lon_lim[0], lon_lim[1], (lon_lim[1]-lon_lim[0])/d_lon)
+	lat = np.linspace(lat_lim[0], lat_lim[1], (lat_lim[1]-lat_lim[0])/d_lat)
+	lon = np.linspace(lon_lim[0], lon_lim[1], (lon_lim[1]-lon_lim[0])/d_lon)
 
-	return x, y
+	return lat, lon
 # end
 
 
-# testModels()
+def erbMatrix(model, erb_pos, lat, lon):
+	ones = np.ones(len(lat))
+	dist_matrix = np.array(list(map(lambda x: geodesicDistance(np.array(list(zip(lat, x*ones))), erb_pos), lon)))
 
-x, y = coordPoints(20e-3)	# 20 metros
+	print("Matriz de perda para ERB montada")
 
-# printa as distancias entre pontos para validar o tamanho
-print("LATITUDE - LONGITUDE")
-for i in range(x.size-1):
-	a = np.array([x[i], y[0]])
-	b = np.array([x[i+1], y[0]])
-	c = np.array([x[0], y[i]])
-	d = np.array([x[0], y[i+1]])
-	print(geodesicDistance(a, b), geodesicDistance(c, d))
+	return modelPathLoss(model, dist_matrix)
+# end
+
+
+def pathLossMatrix(model, erb_coord, grid):
+	lat, lon = coordPoints(grid)
+
+	lat = (lat[:-1] + lat[1:]) / 2
+	lon = (lon[:-1] + lon[1:]) / 2
+
+	print("Coordenadas calculadas")
+
+	matrix = np.array(list(map(lambda x: erbMatrix(model, x, lat, lon), erb_coord)))
+
+	return matrix
+# end
+
+# TEST FUNCTIONS
+
+def testModels(freq):
+
+	models = []
+	models.append(FreeSpace(freq))
+	# models.append(OkumuraHata(freq))
+	models.append(Cost231Hata(freq))
+	models.append(Cost231(freq))
+	models.append(ECC33(freq))
+	models.append(Ericsson(freq))
+	models.append(Lee(freq))
+	# models.append(Sui(freq))
+
+	medicoes = readDataset('medicoes')
+	# print("READ medicoes.csv")
+	erbs = readDataset('erbs')
+	# print("READ erbs.csv")
+	erbs, _ = splitAttributes(erbs, [0, 1, 4, 5])
+
+	med_coord, rssi = splitAttributes(medicoes, [x for x in range(2, 8)])
+	erb_coord, eirp = splitAttributes(pd.DataFrame(erbs), [2])
+
+	distances = np.array(list(map(lambda x: geodesicDistance(erb_coord, x), med_coord)))
+	path_loss = np.transpose(eirp) - rssi
+
+	# print(distances)
+	# print(path_loss)
+
+	errors = np.array([])
+
+	for model in models:
+		model_err = modelPathLoss(model, distances) - path_loss
+		mean_sqr = np.sqrt(np.mean(model_err ** 2))
+		print(type(model).__name__ + ": " + str(mean_sqr))
+
+		errors = np.append(errors, mean_sqr)
+	# end
+
+	return models[errors.argmin()]
+# end
+
+
+def main():
+	medicoes = readDataset('medicoes')
+	# print("READ medicoes.csv")
+	erbs = readDataset('erbs')
+	# print("READ erbs.csv")
+	erbs, _ = splitAttributes(erbs, [0, 1, 4, 5])
+
+	med_coord, rssi = splitAttributes(medicoes, [x for x in range(2, 8)])
+	erb_coord, eirp = splitAttributes(pd.DataFrame(erbs), [2])
+
+	model = Lee(1800)
+	grid = 5e-3
+
+	print("Arquivos lidos")
+
+	matrix = pathLossMatrix(model, erb_coord, grid)
+# end
+
+main()
+
+
+# x, y = coordPoints(20e-3)	# 20 metros
+# # printa as distancias entre pontos para validar o tamanho
+# print("LATITUDE - LONGITUDE")
+# for i in range(x.size-1):
+# 	a = np.array([x[i], y[0]])
+# 	b = np.array([x[i+1], y[0]])
+# 	c = np.array([x[0], y[i]])
+# 	d = np.array([x[0], y[i+1]])
+# 	print(geodesicDistance(a, b), geodesicDistance(c, d))
