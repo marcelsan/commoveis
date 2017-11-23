@@ -66,37 +66,25 @@ def modelPathLoss(model, distances):
 
 # FINGERPRINT FUNCTIONS
 
-def coordPoints(size_km = 5e-3):
+def coordPoints(size_km):
 	lat_lim = [-8.08, -8.065]
 	lon_lim = [-34.91, -34.887]
 
-	init_step = 8e4 * size_km
+	left_down = np.array([lat_lim[0], lon_lim[0]])
+	left_up = np.array([lat_lim[1], lon_lim[0]])
 
-	corner = np.array([lat_lim[0], lon_lim[0]])
-	dx = np.array([1e-7, 0])
-	dy = np.array([0, 1e-7])
-	
-	coord_x = corner + init_step*dx
+	right_down = np.array([lat_lim[0], lon_lim[1]])
+	right_up = np.array([lat_lim[1], lon_lim[1]])
 
-	while geoDist(coord_x, corner) < size_km:
-		coord_x += dx
-	# end
+	# Calcula as variações em graus
 
-	d_lat = coord_x[0] - lat_lim[0]
+	y = max(geoDist(left_down, left_up), geoDist(right_down, right_up))
+	x = max(geoDist(left_down, right_down), geoDist(left_up, right_up))
 
-	# print("Distância (km) em latitude: " + str(geodesicDistance(coord_x, corner)[0]))
-	# print("Passo em latidude: " + str(d_lat))
+	# print(y/size_km, x/size_km)
 
-	coord_y = coord_x + init_step*dy
-
-	while geoDist(coord_y, coord_x) < size_km:
-		coord_y += dy
-	# end
-
-	d_lon = coord_y[1] - lon_lim[0]
-
-	# print("Distância (km) em longitude: " + str(geodesicDistance(coord_y, coord_x)[0]))
-	# print("Passo em longitude: " + str(d_lon))
+	d_lat = (size_km * (lat_lim[1] - lat_lim[0])) / y
+	d_lon = (size_km * (lon_lim[1] - lon_lim[0])) / x
 
 	lat = np.linspace(lat_lim[0], lat_lim[1], (lat_lim[1]-lat_lim[0])/d_lat)
 	lon = np.linspace(lon_lim[0], lon_lim[1], (lon_lim[1]-lon_lim[0])/d_lon)
@@ -131,17 +119,23 @@ def pathLossMatrix(model, erb_coord, grid):
 
 def localizeCoordinates(matrix, path_loss):
 	dif_matrix = np.ones(matrix.shape[:2])
+	print(matrix.shape[:2])
 
-	for x in range(matrix.shape[0]):
-		for y in range(matrix.shape[1]):
-			dif_matrix[x, y] = euclideanDist(matrix[x, y], path_loss)
+	for lat in range(matrix.shape[0]):
+		for lon in range(matrix.shape[1]):
+			dif_matrix[lat, lon] = euclideanDist(matrix[lat, lon], path_loss)
 		# end
 	# end
 
-	x = dif_matrix.argmin() // dif_matrix.shape[0]
-	y = dif_matrix.argmin() %  dif_matrix.shape[1]
+	print(dif_matrix.size)
 
-	return x, y
+	lat_idx = dif_matrix.argmin() // dif_matrix.shape[1]
+	lon_idx = dif_matrix.argmin() %  dif_matrix.shape[1]
+
+	print(dif_matrix.argmin())
+	print(lat_idx, lon_idx)
+
+	return lat_idx, lon_idx
 # end
 
 # TEST FUNCTIONS
@@ -204,19 +198,17 @@ def main():
 
 	# Estima a localização pela matriz
 
-	i = 0
+	error = np.array([])
 
-	coord = med_coord[i]
-	path_loss = np.transpose(eirp) - rssi[i]
+	for i in range(len(med_coord)):
+		coord = med_coord[i]
+		path_loss = eirp - rssi[i]
 
-	x, y = localizeCoordinates(matrix, path_loss)
+		x, y = localizeCoordinates(matrix, path_loss)
+		error = np.append(error, geoDist(coord, np.array([lat[x], lon[y]])))
+	# end
 
-	print(coord)
-	print(lat[x], lon[y])
-
-	error = geoDist(coord, np.array([lat[x], lon[y]]))
-
-	print(error)
+	print(error.mean())
 # end
 
 main()
