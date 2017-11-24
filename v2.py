@@ -130,25 +130,25 @@ def localizeCoordinates(matrix, path_loss):
 	lat_idx = min_idx // y
 	lon_idx = min_idx %  y
 
-	print(matrix.shape)
-	print(lat_idx, lon_idx)
-	print(min_idx, distances.shape)
+	# print(matrix.shape)
+	# print(lat_idx, lon_idx)
+	# print(min_idx, distances.shape)
 
 	return lat_idx, lon_idx
 # end
 
 # TEST FUNCTIONS
 
-def testModels(freq):
+def testModels(freq = 1800):
 	models = []
 	models.append(FreeSpace(freq))
-	# models.append(OkumuraHata(freq))
+	models.append(OkumuraHata(freq))
 	models.append(Cost231Hata(freq))
 	models.append(Cost231(freq))
 	models.append(ECC33(freq))
 	models.append(Ericsson(freq))
 	models.append(Lee(freq))
-	# models.append(Sui(freq))
+	models.append(Sui(freq))
 
 	medicoes = readDataset('medicoes')
 	# print("READ medicoes.csv")
@@ -168,7 +168,7 @@ def testModels(freq):
 
 	for model in models:
 		model_err = modelPathLoss(model, distances) - path_loss
-		mean_sqr = np.sqrt(np.mean(model_err ** 2))
+		mean_sqr = np.mean(model_err ** 2)
 		print(type(model).__name__ + ": " + str(mean_sqr))
 
 		errors = np.append(errors, mean_sqr)
@@ -191,8 +191,8 @@ def main():
 
 	# Cálculo da matriz de perdas
 
-	model = Lee(1800)
-	grid = 5e-3
+	model = Sui(1800)
+	grid = 20e-3
 
 	matrix, lat, lon = pathLossMatrix(model, erb_coord, grid)
 
@@ -208,13 +208,14 @@ def main():
 
 		error = np.append(error, geoDist(coord, np.array([lat[x], lon[y]])))
 
-		print(error[i])
+		print(i, error[i])
 	# end
 
-	print(error.mean())
+	print(np.mean(error**2))
 # end
 
 main()
+# testModels()
 
 
 # x, y = coordPoints(20e-3)	# 20 metros

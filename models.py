@@ -44,7 +44,7 @@ class FreeSpace: #ok
 
 class OkumuraHata:
 
-    def __init__(self, freq = 800, txH = 90, rxH = 1.2, cityKind = CityKind.MEDIUM, areaKind = AreaType.URBAN, checkFreqRange = True):
+    def __init__(self, freq = 800, txH = 90, rxH = 1.2, cityKind = CityKind.MEDIUM, areaKind = AreaType.URBAN, checkFreqRange = False):
 
         self.freq = freq
         self.txH = txH
@@ -85,7 +85,7 @@ class OkumuraHata:
 
 class Cost231Hata:
 
-    def __init__(self, freq = 1650, txH = 50.0, rxH = 1.5, areaKind = AreaType.URBAN, checkFreqRange = True):
+    def __init__(self, freq = 1650, txH = 50.0, rxH = 1.5, areaKind = AreaType.SUBURBAN, checkFreqRange = False):
 
         self.freq = freq
         self.txH = txH
@@ -118,7 +118,7 @@ class Cost231Hata:
 
 class Cost231:
 
-    def __init__(self, freq = 800, txH = 50.0, rxH = 1.5, ws = 20, bs = 10, hr = 35, cityKind = CityKind.MEDIUM, checkFreqRange = True):
+    def __init__(self, freq = 800, txH = 50.0, rxH = 1.5, ws = 20, bs = 10, hr = 35, cityKind = CityKind.SMALL, checkFreqRange = False):
 
         self.freq = freq
         self.txH = txH
@@ -163,7 +163,7 @@ class Cost231:
 
 class ECC33:
 
-    def __init__ (self, freq = 800, txH = 50, rxH = 1.5, checkFreqRange = True):
+    def __init__ (self, freq = 800, txH = 50, rxH = 1.5, checkFreqRange = False):
         self.freq = freq
         self.txH = txH
         self.rxH = rxH
@@ -188,7 +188,7 @@ class ECC33:
 
 class Ericsson:
 
-    def __init__ (self, freq = 800, txH = 50, rxH = 1.5, cityKind = CityKind.MEDIUM, checkFreqRange = True):
+    def __init__ (self, freq = 800, txH = 50, rxH = 1.5, cityKind = CityKind.SMALL, checkFreqRange = False):
         self.freq = freq
         self.txH = txH
         self.rxH = rxH
@@ -247,7 +247,7 @@ class Lee:
         return L
 
 class Sui:
-    def __init__ (self, freq = 2500, txH = 50, rxH = 1.5, terrainKind = TerrainKind.A, shadowFading = 8.2, checkFreqRange = True):
+    def __init__ (self, freq = 2500, txH = 50, rxH = 1.5, terrainKind = TerrainKind.A, shadowFading = 8.2, checkFreqRange = False):
         self.freq = freq
         self.txH = txH
         self.rxH = rxH
