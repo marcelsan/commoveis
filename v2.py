@@ -118,22 +118,21 @@ def pathLossMatrix(model, erb_coord, grid):
 
 
 def localizeCoordinates(matrix, path_loss):
-	dif_matrix = np.ones(matrix.shape[:2])
-	print(matrix.shape[:2])
+	x, y, z = matrix.shape
 
-	for lat in range(matrix.shape[0]):
-		for lon in range(matrix.shape[1]):
-			dif_matrix[lat, lon] = euclideanDist(matrix[lat, lon], path_loss)
-		# end
-	# end
+	# print(matrix)
+	# print(matrix.reshape((x*y, z)))
+	
+	distances = np.array(list(map(lambda x: euclideanDist(x, path_loss), matrix.reshape((x*y, z)))))
 
-	print(dif_matrix.size)
+	min_idx = distances.argmin()
 
-	lat_idx = dif_matrix.argmin() // dif_matrix.shape[1]
-	lon_idx = dif_matrix.argmin() %  dif_matrix.shape[1]
+	lat_idx = min_idx // y
+	lon_idx = min_idx %  y
 
-	print(dif_matrix.argmin())
+	print(matrix.shape)
 	print(lat_idx, lon_idx)
+	print(min_idx, distances.shape)
 
 	return lat_idx, lon_idx
 # end
@@ -185,8 +184,9 @@ def main():
 
 	medicoes = readDataset('medicoes')
 	erbs = readDataset('erbs')
+	testes = readDataset('testLoc')
 
-	med_coord, rssi = splitAttributes(medicoes, [0, 1])
+	med_coord, rssi = splitAttributes(testes, [0, 1])
 	erb_coord, eirp = splitAttributes(erbs, [2, 3], [6])
 
 	# Cálculo da matriz de perdas
@@ -205,7 +205,10 @@ def main():
 		path_loss = eirp - rssi[i]
 
 		x, y = localizeCoordinates(matrix, path_loss)
+
 		error = np.append(error, geoDist(coord, np.array([lat[x], lon[y]])))
+
+		print(error[i])
 	# end
 
 	print(error.mean())
