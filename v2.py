@@ -66,37 +66,25 @@ def modelPathLoss(model, distances):
 
 # FINGERPRINT FUNCTIONS
 
-def coordPoints(size_km = 5e-3):
+def coordPoints(size_km):
 	lat_lim = [-8.08, -8.065]
 	lon_lim = [-34.91, -34.887]
 
-	init_step = 8e4 * size_km
+	left_down = np.array([lat_lim[0], lon_lim[0]])
+	left_up = np.array([lat_lim[1], lon_lim[0]])
 
-	corner = np.array([lat_lim[0], lon_lim[0]])
-	dx = np.array([1e-7, 0])
-	dy = np.array([0, 1e-7])
-	
-	coord_x = corner + init_step*dx
+	right_down = np.array([lat_lim[0], lon_lim[1]])
+	right_up = np.array([lat_lim[1], lon_lim[1]])
 
-	while geoDist(coord_x, corner) < size_km:
-		coord_x += dx
-	# end
+	# Calcula as variações em graus
 
-	d_lat = coord_x[0] - lat_lim[0]
+	y = max(geoDist(left_down, left_up), geoDist(right_down, right_up))
+	x = max(geoDist(left_down, right_down), geoDist(left_up, right_up))
 
-	# print("Distância (km) em latitude: " + str(geodesicDistance(coord_x, corner)[0]))
-	# print("Passo em latidude: " + str(d_lat))
+	# print(y/size_km, x/size_km)
 
-	coord_y = coord_x + init_step*dy
-
-	while geoDist(coord_y, coord_x) < size_km:
-		coord_y += dy
-	# end
-
-	d_lon = coord_y[1] - lon_lim[0]
-
-	# print("Distância (km) em longitude: " + str(geodesicDistance(coord_y, coord_x)[0]))
-	# print("Passo em longitude: " + str(d_lon))
+	d_lat = (size_km * (lat_lim[1] - lat_lim[0])) / y
+	d_lon = (size_km * (lon_lim[1] - lon_lim[0])) / x
 
 	lat = np.linspace(lat_lim[0], lat_lim[1], (lat_lim[1]-lat_lim[0])/d_lat)
 	lon = np.linspace(lon_lim[0], lon_lim[1], (lon_lim[1]-lon_lim[0])/d_lon)
@@ -130,32 +118,37 @@ def pathLossMatrix(model, erb_coord, grid):
 
 
 def localizeCoordinates(matrix, path_loss):
-	dif_matrix = np.ones(matrix.shape[:2])
+	x, y, z = matrix.shape
 
-	for x in range(matrix.shape[0]):
-		for y in range(matrix.shape[1]):
-			dif_matrix[x, y] = euclideanDist(matrix[x, y], path_loss)
-		# end
-	# end
+	# print(matrix)
+	# print(matrix.reshape((x*y, z)))
+	
+	distances = np.array(list(map(lambda x: euclideanDist(x, path_loss), matrix.reshape((x*y, z)))))
 
-	x = dif_matrix.argmin() // dif_matrix.shape[0]
-	y = dif_matrix.argmin() %  dif_matrix.shape[1]
+	min_idx = distances.argmin()
 
-	return x, y
+	lat_idx = min_idx // y
+	lon_idx = min_idx %  y
+
+	# print(matrix.shape)
+	# print(lat_idx, lon_idx)
+	# print(min_idx, distances.shape)
+
+	return lat_idx, lon_idx
 # end
 
 # TEST FUNCTIONS
 
-def testModels(freq):
+def testModels(freq = 1800):
 	models = []
 	models.append(FreeSpace(freq))
-	# models.append(OkumuraHata(freq))
+	models.append(OkumuraHata(freq))
 	models.append(Cost231Hata(freq))
 	models.append(Cost231(freq))
 	models.append(ECC33(freq))
 	models.append(Ericsson(freq))
 	models.append(Lee(freq))
-	# models.append(Sui(freq))
+	models.append(Sui(freq))
 
 	medicoes = readDataset('medicoes')
 	# print("READ medicoes.csv")
@@ -175,7 +168,7 @@ def testModels(freq):
 
 	for model in models:
 		model_err = modelPathLoss(model, distances) - path_loss
-		mean_sqr = np.sqrt(np.mean(model_err ** 2))
+		mean_sqr = np.mean(model_err ** 2)
 		print(type(model).__name__ + ": " + str(mean_sqr))
 
 		errors = np.append(errors, mean_sqr)
@@ -191,35 +184,38 @@ def main():
 
 	medicoes = readDataset('medicoes')
 	erbs = readDataset('erbs')
+	testes = readDataset('testLoc')
 
-	med_coord, rssi = splitAttributes(medicoes, [0, 1])
+	med_coord, rssi = splitAttributes(testes, [0, 1])
 	erb_coord, eirp = splitAttributes(erbs, [2, 3], [6])
 
 	# Cálculo da matriz de perdas
 
-	model = Lee(1800)
-	grid = 5e-3
+	model = Sui(1800)
+	grid = 20e-3
 
 	matrix, lat, lon = pathLossMatrix(model, erb_coord, grid)
 
 	# Estima a localização pela matriz
 
-	i = 0
+	error = np.array([])
 
-	coord = med_coord[i]
-	path_loss = np.transpose(eirp) - rssi[i]
+	for i in range(len(med_coord)):
+		coord = med_coord[i]
+		path_loss = eirp - rssi[i]
 
-	x, y = localizeCoordinates(matrix, path_loss)
+		x, y = localizeCoordinates(matrix, path_loss)
 
-	print(coord)
-	print(lat[x], lon[y])
+		error = np.append(error, geoDist(coord, np.array([lat[x], lon[y]])))
 
-	error = geoDist(coord, np.array([lat[x], lon[y]]))
+		print(i, error[i])
+	# end
 
-	print(error)
+	print(np.mean(error**2))
 # end
 
 main()
+# testModels()
 
 
 # x, y = coordPoints(20e-3)	# 20 metros
