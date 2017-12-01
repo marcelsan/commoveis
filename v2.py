@@ -310,7 +310,7 @@ def main():
 	models = [(classifier, scaler)]
 	# models = [FreeSpace(1800), OkumuraHata(1800), Cost231Hata(1800), Cost231(1800), ECC33(1800), Ericsson(1800), Lee(1800), Sui(1800)]
 	grids = [5e-3, 10e-3, 20e-3]
-	param = (med_coord, 55.59-rssi, erb_coord, eirp)
+	param = (med_coord, rssi, erb_coord, eirp)
 
 	for model in models:
 		if (type(model) is tuple):
