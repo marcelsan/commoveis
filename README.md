@@ -29,6 +29,6 @@ We compared many different regression algorithms to get a model able to estimate
 
 # References
 
-[1] VO, Quoc Duy; DE, Pradipta. A survey of fingerprint-based outdoor localization. IEEE Communications Surveys & Tutorials, v. 18, n. 1, p. 491-506, 2016.
-[2] Pandas. https://pandas.pydata.org 
-[3]	scikit-lean. http://scikit-learn.org 
+[1] VO, Quoc Duy; DE, Pradipta. A survey of fingerprint-based outdoor localization. IEEE Communications Surveys & Tutorials, v. 18, n. 1, p. 491-506, 2016. <br />
+[2] Pandas. https://pandas.pydata.org <br />
+[3]	scikit-lean. http://scikit-learn.org <br />
