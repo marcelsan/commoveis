@@ -4,7 +4,6 @@ from sklearn.utils import shuffle
 from sklearn.neighbors import KNeighborsRegressor
 from math import *
 from sklearn.model_selection import LeaveOneOut
-import matplotlib.pyplot as plt
 
 geo_dist = lambda a, b: acos(sin(radians(a[0]))*sin(radians(b[0]))+cos(radians(a[0]))*cos(radians(b[0]))*cos(radians(a[1]-b[1]))) * 6378.1
 
@@ -12,7 +11,7 @@ geo_dist_julia = lambda a, b: 2 * 6372.8 * asin(sqrt(sin(radians((b[0]-a[0])/2))
 
 df = pd.read_csv('medicoes.csv')
 df = shuffle(df)
-test = pd.read_csv('testLoc.csv')
+test = pd.read_csv('testLoc2.csv')
 
 X = df.iloc[:, 2:].values
 y = df.iloc[:, 0:2].values
@@ -56,7 +55,7 @@ neigh2.fit(X_model_2, y_model_2)
 pred1 = neigh1.predict(X_val)
 pred2 = neigh2.predict(X_val)
 
-pred = (6 * pred1 + 7 * pred2)/13
+pred = (pred1 + pred2)/2
 dist_err = np.array(list(map(lambda x: geo_dist_julia(x[0], x[1]), zip(pred, y_val))))
 
 print(np.mean(np.abs(dist_err)))
