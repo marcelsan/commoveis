@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
+from sklearn import svm
 from sklearn.utils import shuffle
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.preprocessing import RobustScaler
 from math import acos, sin, cos, radians
 from models import *
 
@@ -66,37 +67,25 @@ def modelPathLoss(model, distances):
 
 # FINGERPRINT FUNCTIONS
 
-def coordPoints(size_km = 5e-3):
+def coordPoints(size_km):
 	lat_lim = [-8.08, -8.065]
 	lon_lim = [-34.91, -34.887]
 
-	init_step = 8e4 * size_km
+	left_down = np.array([lat_lim[0], lon_lim[0]])
+	left_up = np.array([lat_lim[1], lon_lim[0]])
 
-	corner = np.array([lat_lim[0], lon_lim[0]])
-	dx = np.array([1e-7, 0])
-	dy = np.array([0, 1e-7])
-	
-	coord_x = corner + init_step*dx
+	right_down = np.array([lat_lim[0], lon_lim[1]])
+	right_up = np.array([lat_lim[1], lon_lim[1]])
 
-	while geoDist(coord_x, corner) < size_km:
-		coord_x += dx
-	# end
+	# Calcula as variações em graus
 
-	d_lat = coord_x[0] - lat_lim[0]
+	y = max(geoDist(left_down, left_up), geoDist(right_down, right_up))
+	x = max(geoDist(left_down, right_down), geoDist(left_up, right_up))
 
-	# print("Distância (km) em latitude: " + str(geodesicDistance(coord_x, corner)[0]))
-	# print("Passo em latidude: " + str(d_lat))
+	# print(y/size_km, x/size_km)
 
-	coord_y = coord_x + init_step*dy
-
-	while geoDist(coord_y, coord_x) < size_km:
-		coord_y += dy
-	# end
-
-	d_lon = coord_y[1] - lon_lim[0]
-
-	# print("Distância (km) em longitude: " + str(geodesicDistance(coord_y, coord_x)[0]))
-	# print("Passo em longitude: " + str(d_lon))
+	d_lat = (size_km * (lat_lim[1] - lat_lim[0])) / y
+	d_lon = (size_km * (lon_lim[1] - lon_lim[0])) / x
 
 	lat = np.linspace(lat_lim[0], lat_lim[1], (lat_lim[1]-lat_lim[0])/d_lat)
 	lon = np.linspace(lon_lim[0], lon_lim[1], (lon_lim[1]-lon_lim[0])/d_lon)
@@ -106,12 +95,18 @@ def coordPoints(size_km = 5e-3):
 
 
 def erbMatrix(model, erb_pos, lat, lon):
-	ones = np.ones(len(lat))
-	dist_matrix = np.matrix(list(map(lambda x: geodesicDistance(list(zip(lat, x*ones)), erb_pos), lon)))
 
-	# print("Matriz de perda para ERB montada")
+	if (len(model) != 2):
+		ones = np.ones(len(lat))
+		dist_matrix = np.matrix(list(map(lambda x: geodesicDistance(list(zip(lat, x*ones)), erb_pos), lon)))
+		matrix = modelPathLoss(model, dist_matrix)
+		
+		print(".", end = "", flush = True)
+	else:
+		ones = np.ones(len(lon))
+		matrix = np.transpose(np.array(list(map(lambda x: predictModel(model, np.array(list(zip(x*ones, lon)))), lat))))
 
-	return modelPathLoss(model, dist_matrix)
+	return matrix
 # end
 
 
@@ -121,41 +116,139 @@ def pathLossMatrix(model, erb_coord, grid):
 	lat = (lat[:-1] + lat[1:]) / 2
 	lon = (lon[:-1] + lon[1:]) / 2
 
-	# print("Coordenadas calculadas")
+	print("Calculating matrix", end = "", flush = True)
 
-	matrix = list(map(lambda x: erbMatrix(model, x, lat, lon), erb_coord))
+	if (len(model) != 2):
+		matrix = list(map(lambda x: erbMatrix(model, x, lat, lon), erb_coord))
+	else:
+		matrix = erbMatrix(model, erb_coord, lat, lon)
+
+	print(" finished!")
 
 	return np.transpose(matrix), lat, lon
 # end
 
 
 def localizeCoordinates(matrix, path_loss):
-	dif_matrix = np.ones(matrix.shape[:2])
+	x, y, z = matrix.shape
 
-	for x in range(matrix.shape[0]):
-		for y in range(matrix.shape[1]):
-			dif_matrix[x, y] = euclideanDist(matrix[x, y], path_loss)
-		# end
+	# print(matrix)
+	# print(matrix.reshape((x*y, z)))
+	
+	distances = np.array(list(map(lambda x: euclideanDist(x, path_loss), matrix.reshape((x*y, z)))))
+
+	min_idx = distances.argmin()
+
+	lat_idx = min_idx // y
+	lon_idx = min_idx %  y
+
+	# print(matrix.shape)
+	# print(lat_idx, lon_idx)
+	# print(min_idx, distances.shape)
+
+	return lat_idx, lon_idx
+# end
+
+
+def fingerprint(model, grid, param):
+
+	med_coord, rssi, erb_coord, eirp = param
+
+	# Cálculo da matriz de perdas
+
+	matrix, lat, lon = pathLossMatrix(model, erb_coord, grid)
+
+	# Estima a localização pela matriz
+
+	error = np.array([])
+
+	print("Calculating error", end = "", flush = True)
+
+	for i in range(len(med_coord)):
+		coord = med_coord[i]
+		path_loss = eirp - rssi[i]
+
+		x, y = localizeCoordinates(matrix, path_loss)
+
+		error = np.append(error, geoDist(coord, np.array([lat[x], lon[y]])))
+
+		# print("Erro", i, ":", error[i])
+		if ((i+1)%5 == 0):
+			print(".", end = "", flush = True)
 	# end
 
-	x = dif_matrix.argmin() // dif_matrix.shape[0]
-	y = dif_matrix.argmin() %  dif_matrix.shape[1]
+	square_err = np.mean(error**2)
 
-	return x, y
+	print(" finished!")
+
+	return square_err
+
 # end
+
+
+def trainModel(x_train, y_train):
+	x_scaler = RobustScaler()
+	x_scaled = x_scaler.fit_transform(x_train)
+
+	y_scaler = []
+	y_scaled = []
+
+	print("Training classifiers", end = "", flush = True)
+
+	for y in np.transpose(y_train):
+		scaler = RobustScaler()
+
+		y_scaler.append(scaler)
+		y_scaled.append(scaler.fit_transform(y.reshape((y.size, 1))))
+	# end
+
+	kernel = 'rbf'
+	C = 1e3
+	gamma = 0.1
+
+	classifiers = []
+
+	for y in y_scaled:
+		classifiers.append(svm.SVR(kernel = kernel, C = C, gamma = gamma).fit(x_scaled, [x[0] for x in y]))
+		print(".", end = "", flush = True)
+	# end
+
+	print(" finished!")
+
+	return classifiers, y_scaler + [x_scaler]
+# end
+
+
+def predictModel(model, x):
+	classifier, scaler = model
+
+	predicted = []
+
+	for i in range(len(classifier)):
+		predict = classifier[i].predict(scaler[-1].transform(x))
+		predicted.append(scaler[i].inverse_transform(predict.reshape((-1, 1))))
+	# end
+		
+	print(".", end = "", flush = True)
+
+	predicted = np.concatenate(predicted, axis = 1)
+
+	return predicted
+# end
+
 
 # TEST FUNCTIONS
 
-def testModels(freq):
+def testModels(freq = 1800):
 	models = []
 	models.append(FreeSpace(freq))
-	# models.append(OkumuraHata(freq))
+	models.append(OkumuraHata(freq))
 	models.append(Cost231Hata(freq))
 	models.append(Cost231(freq))
 	models.append(ECC33(freq))
 	models.append(Ericsson(freq))
 	models.append(Lee(freq))
-	# models.append(Sui(freq))
+	models.append(Sui(freq))
 
 	medicoes = readDataset('medicoes')
 	# print("READ medicoes.csv")
@@ -175,7 +268,7 @@ def testModels(freq):
 
 	for model in models:
 		model_err = modelPathLoss(model, distances) - path_loss
-		mean_sqr = np.sqrt(np.mean(model_err ** 2))
+		mean_sqr = np.mean(model_err ** 2)
 		print(type(model).__name__ + ": " + str(mean_sqr))
 
 		errors = np.append(errors, mean_sqr)
@@ -191,35 +284,46 @@ def main():
 
 	medicoes = readDataset('medicoes')
 	erbs = readDataset('erbs')
+	testes = readDataset('testLoc')
 
-	med_coord, rssi = splitAttributes(medicoes, [0, 1])
+	med_coord, rssi = splitAttributes(testes, [0, 1])
 	erb_coord, eirp = splitAttributes(erbs, [2, 3], [6])
 
-	# Cálculo da matriz de perdas
+	x_train, y_train = splitAttributes(medicoes, [0, 1])
 
-	model = Lee(1800)
-	grid = 5e-3
+	classifier, scaler = trainModel(x_train, 55.59 - y_train)
 
-	matrix, lat, lon = pathLossMatrix(model, erb_coord, grid)
+	# # Test classifiers
 
-	# Estima a localização pela matriz
+	# predicted = []
 
-	i = 0
+	# for i in range(len(classifier)):
+	# 	predict = classifier[i].predict(scaler[-1].transform(med_coord))
+	# 	predicted.append(scaler[i].inverse_transform(predict.reshape((-1, 1))))
+	# # end
 
-	coord = med_coord[i]
-	path_loss = np.transpose(eirp) - rssi[i]
+	# predicted = np.concatenate(predicted, axis = 1)
+	# print(np.sqrt(np.mean((predicted-(55.59-rssi))**2)))
 
-	x, y = localizeCoordinates(matrix, path_loss)
+	# Testing algorithm
 
-	print(coord)
-	print(lat[x], lon[y])
+	models = [(classifier, scaler)]
+	# models = [FreeSpace(1800), OkumuraHata(1800), Cost231Hata(1800), Cost231(1800), ECC33(1800), Ericsson(1800), Lee(1800), Sui(1800)]
+	grids = [5e-3, 10e-3, 20e-3]
+	param = (med_coord, rssi, erb_coord, eirp)
 
-	error = geoDist(coord, np.array([lat[x], lon[y]]))
-
-	print(error)
+	for model in models:
+		if (type(model) is tuple):
+			print("SVM")
+		else:
+			print(type(model).__name__)
+		for grid in grids:
+			err = fingerprint(model, grid, param)
+			print(str(grid*1e3) + "m: " + str(err))
 # end
 
 main()
+# testModels()
 
 
 # x, y = coordPoints(20e-3)	# 20 metros
