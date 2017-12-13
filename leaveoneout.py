@@ -59,5 +59,3 @@ pred = (pred1 + pred2)/2
 dist_err = np.array(list(map(lambda x: geo_dist_julia(x[0], x[1]), zip(pred, y_val))))
 
 print(np.mean(np.abs(dist_err)))
-# plt.hist(dist_err)
-# plt.show()

@@ -279,8 +279,6 @@ def testModels(freq = 1800):
 
 
 def main():
-	
-	# Leitura dos arquivos de entrada
 
 	medicoes = readDataset('medicoes')
 	erbs = readDataset('erbs')
@@ -292,20 +290,6 @@ def main():
 	x_train, y_train = splitAttributes(medicoes, [0, 1])
 
 	classifier, scaler = trainModel(x_train, 55.59 - y_train)
-
-	# # Test classifiers
-
-	# predicted = []
-
-	# for i in range(len(classifier)):
-	# 	predict = classifier[i].predict(scaler[-1].transform(med_coord))
-	# 	predicted.append(scaler[i].inverse_transform(predict.reshape((-1, 1))))
-	# # end
-
-	# predicted = np.concatenate(predicted, axis = 1)
-	# print(np.sqrt(np.mean((predicted-(55.59-rssi))**2)))
-
-	# Testing algorithm
 
 	models = [(classifier, scaler)]
 	# models = [FreeSpace(1800), OkumuraHata(1800), Cost231Hata(1800), Cost231(1800), ECC33(1800), Ericsson(1800), Lee(1800), Sui(1800)]
@@ -320,18 +304,5 @@ def main():
 		for grid in grids:
 			err = fingerprint(model, grid, param)
 			print(str(grid*1e3) + "m: " + str(err))
-# end
 
 main()
-# testModels()
-
-
-# x, y = coordPoints(20e-3)	# 20 metros
-# # printa as distancias entre pontos para validar o tamanho
-# print("LATITUDE - LONGITUDE")
-# for i in range(x.size-1):
-# 	a = np.array([x[i], y[0]])
-# 	b = np.array([x[i+1], y[0]])
-# 	c = np.array([x[0], y[i]])
-# 	d = np.array([x[0], y[i+1]])
-# 	print(geodesicDistance(a, b), geodesicDistance(c, d))

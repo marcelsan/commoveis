@@ -7,12 +7,11 @@ from math import acos, sin, cos, radians
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 
-df = pd.read_csv('medicoes.csv')
+df = pd.read_csv('datasets/medicoes.csv')
 df = shuffle(df)
-test = pd.read_csv('testLoc2.csv')
+test = pd.read_csv('datasets/testLoc2.csv')
 
 geo_dist = lambda a, b: acos(sin(radians(a[0]))*sin(radians(b[0]))+cos(radians(a[0]))*cos(radians(b[0]))*cos(radians(a[1]-b[1]))) * 6378.1
-
 geo_dist_julia = lambda a, b: 2 * 6372.8 * asin(sqrt(sin(radians((b[0]-a[0])/2)) ** 2 + cos(radians(a[0])) * cos(radians(b[0])) * sin(radians((b[1]-a[1])/2)) ** 2))
 
 X = df.iloc[:, 2:].values
@@ -47,7 +46,7 @@ predictions = neigh.predict(X_val)
 dist_err = np.array(list(map(lambda x: geo_dist(x[0], x[1]), zip(predictions, y_val))))
 err_mean = np.mean(dist_err)
 
-### Test SVR
+### SVR
 
 from sklearn.preprocessing import RobustScaler
 rbX = RobustScaler()
